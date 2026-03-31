@@ -1,0 +1,12 @@
+services:
+  churn-dashboard:
+    build:
+      context: ../../../
+      dockerfile: apps/churn_dashboard/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/backend/data
+    environment:
+      - PORT=8000
+    restart: always
