@@ -26,7 +26,7 @@ A real-time analytics platform for customer churn prediction, built with React (
 
 ## Data Source
 
-The application is initialized using the `Telco Customer Churn` dataset. Predictions are generated via a Random Forest Classifier pipeline that includes automated preprocessing (imputation, scaling, and encoding).
+The application is initialized using the `Telco Customer Churn` dataset. Predictions are generated via a **Random Forest Classifier pipeline** that includes automated preprocessing (imputation, scaling, and encoding).
 
 ## Deployment
 
@@ -37,4 +37,4 @@ The app is designed to be hosted within the NextToken environment.
 3. **Launch**: Use `launch_app` to deploy the production build.
 
 ---
-Built with NextToken AI.
+
