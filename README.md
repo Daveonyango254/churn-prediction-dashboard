@@ -15,26 +15,40 @@ A real-time analytics platform for customer churn prediction, built with React (
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide React, Recharts.
 - **Backend**: Python 3.13, SQLite, Scikit-Learn, Pandas, NumPy, Joblib.
-- **Infrastrucutre**: SQLite (Local persistence), RPC API layer.
+- **Infrastructure**: SQLite (Local persistence), RPC API layer.
 
 ## Project Structure
 
-- `apps/churn_dashboard/frontend/`: React application code and assets.
-- `apps/churn_dashboard/backend/`: Python RPC functions and database logic.
-- `apps/churn_dashboard/backend/data/db/`: SQLite database storage.
-- `apps/churn_dashboard/backend/models/`: Serialized machine learning model (`churn_model.pkl`).
+- `frontend/`: React application code and assets.
+- `backend/`: Python RPC functions and database logic.
+- `backend/data/db/`: SQLite database storage.
+- `backend/models/`: Serialized machine learning model (`churn_model.pkl`).
 
 ## Data Source
 
-The application is initialized using the `Telco Customer Churn` dataset. Predictions are generated via a **Random Forest Classifier pipeline** that includes automated preprocessing (imputation, scaling, and encoding).
+The application is initialized using the `Telco Customer Churn` dataset. Predictions are generated via a Random Forest Classifier pipeline that includes automated preprocessing (imputation, scaling, and encoding).
 
 ## Deployment
 
-The app is designed to be hosted within the NextToken environment. 
+### Option 1: Docker (Recommended)
+Run the entire stack using Docker Compose:
+```bash
+docker-compose up --build
+```
+The app will be accessible at `http://localhost:8000`.
 
-1. **Build Frontend**: `cd apps/churn_dashboard/frontend && npm install && npm run build`
-2. **Backend**: Ensure `requirements.txt` dependencies are installed.
-3. **Launch**: Use `launch_app` to deploy the production build.
+### Option 2: Local Manual Setup
+1. **Build Frontend**:
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   ```
+2. **Setup Backend**:
+   - Ensure Python 3.13 is installed.
+   - Install dependencies: `pip install -r backend/requirements.txt`
+3. **Run**:
+   - Use a production server to serve the `backend/main.py` and static files in `frontend/dist`.
 
 ---
-
+Built with NextToken AI.
