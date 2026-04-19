@@ -1,12 +1,40 @@
 services:
-  churn-dashboard:
+  backend:
     build:
-      context: ../../../
-      dockerfile: apps/churn_dashboard/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ALLOWED_ORIGINS: http://localhost:3000
+      PORT: 8000
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend/data:/app/backend/data
-    environment:
-      - PORT=8000
-    restart: always
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5).read()",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

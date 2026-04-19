@@ -1,798 +1,1132 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Zap, 
-  TrendingUp, 
-  AlertTriangle, 
-  UserCheck, 
-  Search, 
-  Filter, 
-  RefreshCw,
-  ChevronRight,
-  Database,
+import {
+  Activity,
+  AlertTriangle,
   BarChart3,
-  PieChart as PieChartIcon,
-  Info
-} from 'lucide-react';
-import { 
-  SiApachespark, 
-  SiApachehadoop, 
-  SiMysql, 
-  SiScikitlearn 
-} from 'react-icons/si';
-import { 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell,
-  PieChart,
-  Pie
-} from 'recharts';
+  BrainCircuit,
+  Container,
+  Database,
+  Filter,
+  Play,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Square,
+  TrendingUp,
+  Users,
+  Workflow,
+} from "lucide-react";
+import {
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { rpcCall, invalidateCache } from './api';
-import { cn } from './lib/utils';
+import {
+  type CustomerRecord,
+  type DemoCustomerEvent,
+  type DemoSession,
+  type FeatureImportance,
+  type Metadata,
+  type Overview,
+  type PredictionResponse,
+  type SegmentGroup,
+  loadCustomers,
+  loadDistribution,
+  loadFeatureImportance,
+  loadMetadata,
+  loadOverview,
+  openDemoStream,
+  predictCustomer,
+  startDemoSession,
+  stopDemoSession,
+} from "./api";
+import { Badge } from "./components/ui/badge";
+import { Button } from "./components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
+import { Skeleton } from "./components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/ui/table";
+import { cn } from "./lib/utils";
 
-import { Button } from './components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table';
-import { Badge } from './components/ui/badge';
-import { Separator } from './components/ui/separator';
-import { ScrollArea } from './components/ui/scroll-area';
-import { Skeleton } from './components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { Label } from './components/ui/label';
+type PredictorValue = string | number;
 
-// --- Types ---
-interface ChurnOverview {
-  total: number;
-  avg_prob: number;
-  churned_count: number;
-  churn_rate: number;
+const predictorSelectFields = [
+  { name: "Contract", label: "Contract" },
+  { name: "InternetService", label: "Internet Service" },
+  { name: "TechSupport", label: "Tech Support" },
+  { name: "OnlineSecurity", label: "Online Security" },
+  { name: "PaymentMethod", label: "Payment Method" },
+  { name: "Partner", label: "Partner" },
+  { name: "Dependents", label: "Dependents" },
+  { name: "Gender", label: "Gender" },
+] as const;
+
+const predictorNumberFields = [
+  { name: "Tenure", label: "Tenure (months)" },
+  { name: "MonthlyCharges", label: "Monthly Charges" },
+  { name: "TotalCharges", label: "Total Charges" },
+] as const;
+
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+function percent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
 }
 
-interface ProbDistribution {
-  bin: string;
-  count: number;
-}
-
-interface FeatureImportance {
-  feature: string;
-  importance: number;
-}
-
-interface Segment {
-  id: string;
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
   label: string;
-  category: string;
+  value: string;
+  hint: string;
+  icon: typeof Users;
+}) {
+  return (
+    <Card className="panel">
+      <CardContent className="flex items-start justify-between gap-4 p-6">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            {label}
+          </p>
+          <p className="font-heading text-3xl font-semibold text-slate-950">
+            {value}
+          </p>
+          <p className="text-sm text-slate-500">{hint}</p>
+        </div>
+        <div className="rounded-2xl border border-white/50 bg-white/80 p-3 text-teal-700 shadow-sm">
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
-interface Customer {
-  customerID: string;
-  gender: string;
-  SeniorCitizen: number;
-  Partner: string;
-  Dependents: string;
-  tenure: number;
-  PhoneService: string;
-  MultipleLines: string;
-  InternetService: string;
-  OnlineSecurity: string;
-  OnlineBackup: string;
-  DeviceProtection: string;
-  TechSupport: string;
-  StreamingTV: string;
-  StreamingMovies: string;
-  Contract: string;
-  PaperlessBilling: string;
-  PaymentMethod: string;
-  MonthlyCharges: number;
-  TotalCharges: string;
-  probability: number;
-  prediction: string;
+function StreamStatus({ session }: { session: DemoSession | null }) {
+  const active = session && (session.status === "starting" || session.status === "running");
+
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/80 px-3 py-1.5 text-sm text-slate-700 shadow-sm">
+      <span className={cn("h-2.5 w-2.5 rounded-full", active ? "live-dot" : "bg-slate-300")} />
+      {active ? "Live demo running" : "Baseline analytics loaded"}
+    </div>
+  );
 }
 
-// --- Components ---
-
-const StatCard = ({ title, value, subValue, icon: Icon, trend }: any) => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold font-heading">{value}</h3>
-            {trend && (
-              <span className={cn("text-xs font-medium", trend > 0 ? "text-rose-500" : "text-emerald-500")}>
-                {trend > 0 ? '+' : ''}{trend}%
-              </span>
+function ArchitectureCard({
+  title,
+  icon: Icon,
+  points,
+  tone,
+}: {
+  title: string;
+  icon: typeof Workflow;
+  points: string[];
+  tone: "light" | "dark";
+}) {
+  return (
+    <Card className={cn(tone === "dark" ? "panel-dark" : "panel")}>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "rounded-2xl p-3",
+              tone === "dark"
+                ? "bg-white/10 text-white"
+                : "bg-slate-950/5 text-slate-900"
             )}
+          >
+            <Icon className="h-5 w-5" />
           </div>
-          {subValue && <p className="text-xs text-muted-foreground">{subValue}</p>}
+          <div>
+            <CardTitle className={cn("font-heading text-xl", tone === "dark" && "text-white")}>
+              {title}
+            </CardTitle>
+            <CardDescription className={tone === "dark" ? "text-slate-300" : ""}>
+              Resume-facing architecture summary.
+            </CardDescription>
+          </div>
         </div>
-        <div className="rounded-lg bg-primary/10 p-2.5">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {points.map((point) => (
+          <div
+            key={point}
+            className={cn(
+              "rounded-2xl border px-4 py-3 text-sm leading-relaxed",
+              tone === "dark"
+                ? "border-white/10 bg-white/5 text-slate-100"
+                : "border-slate-200/80 bg-white/70 text-slate-700"
+            )}
+          >
+            {point}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
 
-const TechStackLogo = ({ icon: Icon, label }: any) => (
-  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
-    <Icon className="h-4 w-4 text-white/80" />
-    <span className="text-xs font-medium text-white/90">{label}</span>
-  </div>
-);
+function DistributionBars({
+  data,
+}: {
+  data: { bin: string; count: number }[];
+}) {
+  const maxCount = Math.max(...data.map((item) => item.count), 1);
+
+  return (
+    <div className="grid h-full grid-cols-5 gap-3 lg:grid-cols-10">
+      {data.map((item) => {
+        const height = Math.max((item.count / maxCount) * 100, 8);
+        return (
+          <div key={item.bin} className="flex min-h-0 flex-col justify-end gap-3">
+            <div className="group relative flex flex-1 items-end">
+              <div className="absolute -top-8 left-1/2 hidden -translate-x-1/2 rounded-full bg-slate-950 px-2 py-1 text-xs text-white shadow-lg group-hover:block">
+                {item.count}
+              </div>
+              <div className="w-full rounded-t-[18px] bg-teal-100">
+                <div
+                  className="w-full rounded-t-[18px] bg-teal-700 transition-[height] duration-300"
+                  style={{ height: `${height}%` }}
+                />
+              </div>
+            </div>
+            <p className="text-center text-[11px] leading-4 text-slate-500">{item.bin}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ImportanceBars({
+  data,
+}: {
+  data: FeatureImportance[];
+}) {
+  const maxValue = Math.max(...data.map((item) => item.importance), 0.0001);
+
+  return (
+    <div className="space-y-4">
+      {data.map((item) => (
+        <div key={item.feature} className="space-y-2">
+          <div className="flex items-center justify-between gap-4 text-sm">
+            <span className="font-medium text-slate-700">{item.feature}</span>
+            <span className="font-mono text-xs text-slate-500">
+              {item.importance.toFixed(4)}
+            </span>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-orange-100">
+            <div
+              className="h-full rounded-full bg-orange-500"
+              style={{ width: `${(item.importance / maxValue) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [overview, setOverview] = useState<ChurnOverview | null>(null);
-  const [distribution, setDistribution] = useState<ProbDistribution[]>([]);
+  const [metadata, setMetadata] = useState<Metadata | null>(null);
+  const [segments, setSegments] = useState<SegmentGroup[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [distribution, setDistribution] = useState<{ bin: string; count: number }[]>([]);
   const [featureImportance, setFeatureImportance] = useState<FeatureImportance[]>([]);
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [predictorProfile, setPredictorProfile] = useState<Record<string, PredictorValue>>({});
+  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
-  
-  // Predictor state
-  const [predictorData, setPredictorData] = useState<Partial<Customer>>({
-    gender: 'Male',
-    SeniorCitizen: 0,
-    Partner: 'No',
-    Dependents: 'No',
-    tenure: 12,
-    PhoneService: 'Yes',
-    MultipleLines: 'No',
-    InternetService: 'Fiber optic',
-    OnlineSecurity: 'No',
-    OnlineBackup: 'No',
-    DeviceProtection: 'No',
-    TechSupport: 'No',
-    StreamingTV: 'No',
-    StreamingMovies: 'No',
-    Contract: 'Month-to-month',
-    PaperlessBilling: 'Yes',
-    PaymentMethod: 'Electronic check',
-    MonthlyCharges: 70.0,
-    TotalCharges: '840.0'
-  });
-  const [predictionResult, setPredictionResult] = useState<any>(null);
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [customerLoading, setCustomerLoading] = useState(true);
   const [predicting, setPredicting] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [demoSession, setDemoSession] = useState<DemoSession | null>(null);
+  const [liveEvents, setLiveEvents] = useState<DemoCustomerEvent[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // --- Data Loading ---
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    console.log("[FETCH_START] loadData");
-    try {
-      const activeFilters = Object.fromEntries(
-        Object.entries(filters).filter(([_, v]) => v !== 'all')
-      );
-      const [ov, dist, feat, segs, custs] = await Promise.all([
-        rpcCall({ func: 'get_churn_overview' }),
-        rpcCall({ func: 'get_probability_distribution', args: { segments: Object.values(activeFilters) } }),
-        rpcCall({ func: 'get_feature_importance' }),
-        rpcCall({ func: 'get_customer_segments' }),
-        rpcCall({ func: 'get_customers', args: { segment_filters: activeFilters, limit: 50 } })
-      ]);
-      
-      setOverview(ov);
-      setDistribution(dist);
-      setFeatureImportance(feat);
-      setSegments(segs);
-      setCustomers(custs);
-      console.log("[FETCH_RESPONSE] Data loaded successfully");
-    } catch (err) {
-      console.error("[PARSE_ERROR] Failed to load data", err);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    let active = true;
+
+    async function bootstrap() {
+      try {
+        setPageError(null);
+        const [meta, topDrivers] = await Promise.all([
+          loadMetadata(),
+          loadFeatureImportance(),
+        ]);
+        if (!active) return;
+        setMetadata(meta);
+        setSegments(meta.segment_fields);
+        setPredictorProfile(meta.default_profile);
+        setFeatureImportance(topDrivers);
+      } catch (error) {
+        if (!active) return;
+        setPageError(error instanceof Error ? error.message : "Failed to load application metadata.");
+      }
     }
+
+    bootstrap();
+
+    return () => {
+      active = false;
+      eventSourceRef.current?.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDashboard() {
+      try {
+        setDashboardLoading(true);
+        const [nextOverview, nextDistribution] = await Promise.all([
+          loadOverview(filters),
+          loadDistribution(filters),
+        ]);
+        if (!active) return;
+        setOverview(nextOverview);
+        setDistribution(nextDistribution);
+      } catch (error) {
+        if (!active) return;
+        setPageError(error instanceof Error ? error.message : "Failed to load dashboard analytics.");
+      } finally {
+        if (active) {
+          setDashboardLoading(false);
+        }
+      }
+    }
+
+    loadDashboard();
+
+    return () => {
+      active = false;
+    };
   }, [filters]);
 
   useEffect(() => {
-    loadData();
-    console.log("[RENDER_SUCCESS] Dashboard mounted");
-  }, [loadData]);
+    let active = true;
 
-  const handlePredict = async () => {
-    setPredicting(true);
-    console.log("[ACTION_START] predict_churn");
+    async function loadTable() {
+      try {
+        setCustomerLoading(true);
+        const nextCustomers = await loadCustomers({
+          ...filters,
+          search: deferredSearch || undefined,
+          limit: 50,
+        });
+        if (!active) return;
+        setCustomers(nextCustomers);
+      } catch (error) {
+        if (!active) return;
+        setPageError(error instanceof Error ? error.message : "Failed to load customer profiles.");
+      } finally {
+        if (active) {
+          setCustomerLoading(false);
+        }
+      }
+    }
+
+    loadTable();
+
+    return () => {
+      active = false;
+    };
+  }, [filters, deferredSearch]);
+
+  function updateFilter(field: string, value: string) {
+    startTransition(() => {
+      setFilters((current) => {
+        if (value === "all") {
+          const next = { ...current };
+          delete next[field];
+          return next;
+        }
+        return { ...current, [field]: value };
+      });
+    });
+  }
+
+  function resetFilters() {
+    startTransition(() => {
+      setFilters({});
+      setSearch("");
+    });
+  }
+
+  async function handlePredict() {
     try {
-      const res = await rpcCall({ func: 'predict_churn', args: { customer_data: predictorData } });
-      setPredictionResult(res);
-      console.log("[FETCH_RESPONSE] Prediction successful");
-    } catch (err) {
-      console.error("[PARSE_ERROR] Prediction failed", err);
+      setPredicting(true);
+      setPrediction(await predictCustomer(predictorProfile));
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : "Prediction failed.");
     } finally {
       setPredicting(false);
     }
-  };
+  }
 
-  // Group segments by category
-  const groupedSegments = useMemo(() => {
-    if (!segments) return {};
-    return segments.reduce((acc: Record<string, Segment[]>, seg) => {
-      if (!acc[seg.category]) acc[seg.category] = [];
-      acc[seg.category].push(seg);
-      return acc;
-    }, {});
-  }, [segments]);
+  async function handleStartDemo() {
+    try {
+      setSessionError(null);
+      setLiveEvents([]);
+      eventSourceRef.current?.close();
 
-  const handleFilterChange = (category: string, value: string) => {
-    const newFilters = { ...filters };
-    if (value === 'all') {
-      delete newFilters[category];
-    } else {
-      newFilters[category] = value;
+      const response = await startDemoSession();
+      setDemoSession(response.session);
+
+      const source = openDemoStream(response.session.id, {
+        onStarted: ({ session }) => setDemoSession(session),
+        onCustomer: (payload) => {
+          setLiveEvents((current) => [payload, ...current].slice(0, 8));
+        },
+        onState: ({ session }) => setDemoSession(session),
+        onFinished: ({ session }) => {
+          setDemoSession(session);
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+        },
+        onError: (message) => {
+          setSessionError(message);
+          eventSourceRef.current?.close();
+          eventSourceRef.current = null;
+        },
+      });
+
+      eventSourceRef.current = source;
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : "Unable to start the live demo.");
     }
-    setFilters(newFilters);
-  };
+  }
+
+  async function handleStopDemo() {
+    if (!demoSession) return;
+    try {
+      const response = await stopDemoSession(demoSession.id);
+      setDemoSession(response.session);
+    } catch (error) {
+      setSessionError(error instanceof Error ? error.message : "Unable to stop the live demo.");
+    } finally {
+      eventSourceRef.current?.close();
+      eventSourceRef.current = null;
+    }
+  }
+
+  const liveRunning =
+    demoSession?.status === "running" || demoSession?.status === "starting";
+
+  const demoHighlights = metadata?.demo_limits;
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-64 border-r bg-muted/20 flex flex-col hidden md:flex">
-        <div className="p-6 border-b">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+    <div className="min-h-screen bg-[hsl(var(--background))] text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 md:px-6 lg:px-8">
+        <header className="panel flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge className="rounded-full border-none bg-teal-600/15 px-3 py-1 text-teal-700">
+                Resume demo
+              </Badge>
+              <Badge
+                variant="outline"
+                className="rounded-full border-slate-300/70 bg-white/80 px-3 py-1 text-slate-600"
+              >
+                Random Forest + on-demand streaming
+              </Badge>
             </div>
-            <h1 className="font-heading font-bold text-lg tracking-tight">ChurnGuard AI</h1>
+            <div className="space-y-2">
+              <h1 className="font-heading text-4xl font-semibold tracking-tight text-slate-950 md:text-5xl">
+                Churn Prediction Platform
+              </h1>
+              <p className="max-w-3xl text-base leading-7 text-slate-600 md:text-lg">
+                Production-style telecom churn analytics with a trained Random Forest pipeline,
+                segment drilldowns, live synthetic event scoring, and a deployment story built for a
+                portfolio walkthrough.
+              </p>
+            </div>
           </div>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-1">
-          <Button 
-            variant={activeTab === 'overview' ? 'default' : 'ghost'} 
-            className="w-full justify-start gap-3"
-            onClick={() => setActiveTab('overview')}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Overview
-          </Button>
-          <Button 
-            variant={activeTab === 'customers' ? 'default' : 'ghost'} 
-            className="w-full justify-start gap-3"
-            onClick={() => setActiveTab('customers')}
-          >
-            <Users className="h-4 w-4" />
-            Customer List
-          </Button>
-          <Button 
-            variant={activeTab === 'predictor' ? 'default' : 'ghost'} 
-            className="w-full justify-start gap-3"
-            onClick={() => setActiveTab('predictor')}
-          >
-            <Zap className="h-4 w-4" />
-            Risk Predictor
-          </Button>
-        </nav>
-
-        <div className="p-4 mt-auto">
-          <Card className="bg-primary/5 border-primary/10">
-            <CardContent className="p-4 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
-                <Database className="h-3 w-3" />
-                Data Source
-              </div>
-              <p className="text-xs text-muted-foreground">Telco Customer Churn (Processed via Scikit-Learn)</p>
-            </CardContent>
-          </Card>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Header */}
-        <header className="md:hidden border-b p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h1 className="font-heading font-bold">ChurnGuard AI</h1>
+          <div className="flex flex-col items-start gap-3 md:items-end">
+            <StreamStatus session={demoSession} />
+            <div className="flex flex-wrap gap-3">
+              <Button
+                size="lg"
+                onClick={handleStartDemo}
+                disabled={liveRunning || !metadata}
+                className="rounded-full bg-slate-950 px-6 text-white hover:bg-slate-800"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                Start live demo
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleStopDemo}
+                disabled={!liveRunning}
+                className="rounded-full border-slate-300 bg-white/80 px-6"
+              >
+                <Square className="mr-2 h-4 w-4" />
+                Stop stream
+              </Button>
+            </div>
           </div>
-          <Button variant="ghost" size="icon">
-            <Search className="h-5 w-5" />
-          </Button>
         </header>
 
-        <ScrollArea className="flex-1">
-          <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto w-full">
-            
-            {activeTab === 'overview' && (
-              <>
-                {/* Hero Section */}
-                <section className="relative rounded-2xl overflow-hidden min-h-[320px] flex flex-col justify-end p-8 bg-mesh">
-                  <img 
-                    src="./assets/hero-call-center-1.jpg" 
-                    alt="Customer Intelligence" 
-                    className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-40"
-                    style={{ backgroundColor: '#1e293b' }}
-                  />
-                  <div className="relative z-10 space-y-4 max-w-2xl">
-                    <Badge variant="secondary" className="bg-primary/20 text-white border-none backdrop-blur-md">
-                      AI-Driven Insights
-                    </Badge>
-                    <h2 className="text-4xl font-heading font-bold text-white tracking-tight">
-                      Anticipate Customer Needs, <span className="text-primary-foreground underline decoration-primary/50">Reduce Churn.</span>
-                    </h2>
-                    <p className="text-white/80 text-lg leading-relaxed">
-                      Leverage advanced behavioral analytics to identify at-risk customers before they leave. Our predictive engine analyzes over 20 behavioral indicators to score risk in real-time.
-                    </p>
-                    <div className="flex flex-wrap gap-4 pt-2">
-                      <TechStackLogo icon={SiApachespark} label="Spark" />
-                      <TechStackLogo icon={SiScikitlearn} label="Scikit-Learn" />
-                      <TechStackLogo icon={SiMysql} label="MySQL" />
+        {(pageError || sessionError) && (
+          <Card className="border-rose-300 bg-rose-50">
+            <CardContent className="flex items-start gap-3 p-5 text-rose-700">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="space-y-1">
+                {pageError && <p>{pageError}</p>}
+                {sessionError && <p>{sessionError}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <section className="grid gap-6 lg:grid-cols-[1.7fr,1fr]">
+          <Card className="hero-card overflow-hidden border-none">
+            <CardContent className="relative flex h-full flex-col justify-between gap-8 p-6 md:p-8">
+              <div className="grid gap-4 md:grid-cols-3">
+                {dashboardLoading || !overview ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton key={index} className="h-24 w-full rounded-3xl" />
+                  ))
+                ) : (
+                  <>
+                    <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                      <p className="text-sm uppercase tracking-[0.22em] text-cyan-100/70">Historical base</p>
+                      <p className="mt-3 font-heading text-3xl font-semibold text-white">
+                        {overview.total_customers.toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-200">scored customer records</p>
                     </div>
-                  </div>
-                </section>
+                    <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                      <p className="text-sm uppercase tracking-[0.22em] text-cyan-100/70">Predicted risk</p>
+                      <p className="mt-3 font-heading text-3xl font-semibold text-white">
+                        {percent(overview.avg_predicted_risk)}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-200">average churn probability</p>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
+                      <p className="text-sm uppercase tracking-[0.22em] text-cyan-100/70">Observed churn</p>
+                      <p className="mt-3 font-heading text-3xl font-semibold text-white">
+                        {percent(overview.actual_churn_rate)}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-200">actual label rate in training history</p>
+                    </div>
+                  </>
+                )}
+              </div>
 
-                {/* KPI Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatCard 
-                    title="Total Customers" 
-                    value={overview?.total.toLocaleString() || '0'} 
-                    icon={Users} 
-                  />
-                  <StatCard 
-                    title="Average Risk Score" 
-                    value={`${((overview?.avg_prob || 0) * 100).toFixed(1)}%`} 
-                    icon={AlertTriangle}
-                    trend={+2.4}
-                  />
-                  <StatCard 
-                    title="Predicted Churns" 
-                    value={overview?.churned_count.toLocaleString() || '0'} 
-                    icon={TrendingUp} 
-                  />
-                  <StatCard 
-                    title="Overall Churn Rate" 
-                    value={`${((overview?.churn_rate || 0) * 100).toFixed(1)}%`} 
-                    icon={UserCheck}
-                    trend={-1.2}
-                  />
+              <div className="max-w-3xl space-y-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-100/80">
+                  Hosted demo path
+                </p>
+                <h2 className="font-heading text-3xl font-semibold leading-tight text-white md:text-4xl">
+                  Containerized API, live visitor-triggered streaming, and a dashboard designed for a
+                  recruiter to understand in under a minute.
+                </h2>
+                <p className="max-w-2xl text-base leading-7 text-slate-200">
+                  The public deployment is optimized for reliability and cost control. The original big-data
+                  architecture remains part of the project story, while the hosted version makes the product
+                  demo concrete and fast.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Badge className="rounded-full border-none bg-white/15 px-3 py-1 text-white">
+                  Vercel frontend
+                </Badge>
+                <Badge className="rounded-full border-none bg-white/15 px-3 py-1 text-white">
+                  FastAPI container
+                </Badge>
+                <Badge className="rounded-full border-none bg-white/15 px-3 py-1 text-white">
+                  Docker-first local setup
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="panel">
+            <CardHeader className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="font-heading text-2xl">Live stream control</CardTitle>
+                  <CardDescription>
+                    On-demand synthetic events scored by the trained model.
+                  </CardDescription>
                 </div>
+                <div className="rounded-2xl bg-teal-600/10 p-3 text-teal-700">
+                  <Activity className="h-5 w-5" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Session status</p>
+                  <p className="mt-2 font-heading text-2xl font-semibold text-slate-950">
+                    {demoSession?.status ?? "idle"}
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Events processed</p>
+                  <p className="mt-2 font-heading text-2xl font-semibold text-slate-950">
+                    {demoSession?.processed_events ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">High-risk events</p>
+                  <p className="mt-2 font-heading text-2xl font-semibold text-slate-950">
+                    {demoSession?.high_risk_events ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Live avg risk</p>
+                  <p className="mt-2 font-heading text-2xl font-semibold text-slate-950">
+                    {percent(demoSession?.avg_probability ?? 0)}
+                  </p>
+                </div>
+              </div>
 
-                {/* Filters Row */}
-                <div className="flex flex-wrap items-center gap-4 bg-muted/30 p-4 rounded-xl border">
-                  <div className="flex items-center gap-2 mr-2">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Segment Exploration:</span>
+              {demoHighlights && (
+                <div className="rounded-3xl border border-dashed border-slate-300/80 bg-slate-50/90 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Guardrails</p>
+                  <div className="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                    <p>Max concurrent sessions: {demoHighlights.max_concurrent_sessions}</p>
+                    <p>Max events per run: {demoHighlights.max_events}</p>
+                    <p>Cooldown per visitor: {demoHighlights.cooldown_seconds}s</p>
+                    <p>Target event cadence: {demoHighlights.event_interval_seconds}s</p>
                   </div>
-                  
-                  {Object.entries(groupedSegments).map(([category, items]) => (
-                    <div key={category} className="space-y-1">
-                      <Select 
-                        value={filters[category] || 'all'} 
-                        onValueChange={(val) => handleFilterChange(category, val)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {dashboardLoading || !overview ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-36 w-full rounded-3xl" />
+            ))
+          ) : (
+            <>
+              <MetricCard
+                label="Customers"
+                value={overview.total_customers.toLocaleString()}
+                hint="Historical customer profiles scored on startup."
+                icon={Users}
+              />
+              <MetricCard
+                label="High-Risk Cohort"
+                value={overview.high_risk_customers.toLocaleString()}
+                hint={`${percent(overview.high_risk_rate)} of the filtered dataset.`}
+                icon={AlertTriangle}
+              />
+              <MetricCard
+                label="Average Risk"
+                value={percent(overview.avg_predicted_risk)}
+                hint="Mean model probability across the current segment."
+                icon={TrendingUp}
+              />
+              <MetricCard
+                label="Observed Churn"
+                value={overview.actual_churn_customers.toLocaleString()}
+                hint={`${percent(overview.actual_churn_rate)} actual churn labels.`}
+                icon={ShieldCheck}
+              />
+            </>
+          )}
+        </section>
+
+        <Card className="panel">
+          <CardHeader className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle className="font-heading text-2xl">Segment drilldown</CardTitle>
+                <CardDescription>
+                  Filter historical data, search the highest-risk customer profiles, and reset to the full baseline.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-full border-slate-300 bg-white/80"
+                onClick={resetFilters}
+              >
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Reset filters
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_1.2fr]">
+            {segments.map((segment) => (
+              <div key={segment.field} className="space-y-2">
+                <Label>{segment.label}</Label>
+                <Select
+                  value={filters[segment.field] ?? "all"}
+                  onValueChange={(value) => updateFilter(segment.field, value)}
+                >
+                  <SelectTrigger className="h-11 rounded-2xl border-slate-300 bg-white">
+                    <SelectValue placeholder={`All ${segment.label}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All {segment.label}</SelectItem>
+                    {segment.options.map((option) => (
+                      <SelectItem key={`${segment.field}-${option.value}`} value={option.value}>
+                        {option.label} ({option.count})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+
+            <div className="space-y-2">
+              <Label>Search customer ID</Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search the top-risk registry"
+                  className="h-11 rounded-2xl border-slate-300 bg-white pl-11"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <section className="grid gap-6 xl:grid-cols-2">
+          <Card className="panel">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-heading text-2xl">
+                <BarChart3 className="h-5 w-5 text-teal-700" />
+                Risk distribution
+              </CardTitle>
+              <CardDescription>
+                Historical predicted probability bands for the current segment selection.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[320px]">
+              {dashboardLoading ? (
+                <Skeleton className="h-full w-full rounded-3xl" />
+              ) : (
+                <DistributionBars data={distribution} />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="panel">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-heading text-2xl">
+                <BrainCircuit className="h-5 w-5 text-orange-600" />
+                Feature drivers
+              </CardTitle>
+              <CardDescription>
+                Aggregated Random Forest importance by raw feature group.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[320px]">
+              {featureImportance.length === 0 ? (
+                <Skeleton className="h-full w-full rounded-3xl" />
+              ) : (
+                <div className="h-full overflow-y-auto pr-2">
+                  <ImportanceBars data={featureImportance} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1.6fr,1fr]">
+          <Card className="panel">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="font-heading text-2xl">Customer risk registry</CardTitle>
+                  <CardDescription>
+                    Highest-risk historical profiles after segment filters and customer search.
+                  </CardDescription>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-slate-300 bg-white/70 px-3 py-1 text-slate-600"
+                >
+                  Top 50 profiles
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-200">
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Contract</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Monthly</TableHead>
+                    <TableHead>Risk</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Actual</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customerLoading ? (
+                    Array.from({ length: 6 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell colSpan={7}>
+                          <Skeleton className="h-12 w-full rounded-2xl" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    customers.map((customer) => (
+                      <TableRow key={customer.customerID} className="border-slate-200">
+                        <TableCell className="font-medium text-slate-950">
+                          {customer.customerID}
+                        </TableCell>
+                        <TableCell>{customer.Contract}</TableCell>
+                        <TableCell>{customer.InternetService}</TableCell>
+                        <TableCell>{moneyFormatter.format(customer.MonthlyCharges)}</TableCell>
+                        <TableCell className="min-w-[140px]">
+                          <div className="flex items-center gap-3">
+                            <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-200">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  customer.probability >= 0.6
+                                    ? "bg-rose-500"
+                                    : customer.probability >= 0.35
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                )}
+                                style={{ width: `${customer.probability * 100}%` }}
+                              />
+                            </div>
+                            <span>{percent(customer.probability)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={cn(
+                              "rounded-full border-none px-3 py-1",
+                              customer.prediction === "Yes"
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            )}
+                          >
+                            {customer.prediction === "Yes" ? "High risk" : "Stable"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={cn(
+                              "rounded-full border-none px-3 py-1",
+                              customer.actual_churn === "Yes"
+                                ? "bg-slate-950 text-white"
+                                : "bg-slate-200 text-slate-700"
+                            )}
+                          >
+                            {customer.actual_churn === "Yes" ? "Churned" : "Stayed"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6">
+            <Card className="panel">
+              <CardHeader className="space-y-3">
+                <CardTitle className="flex items-center gap-2 font-heading text-2xl">
+                  <Activity className="h-5 w-5 text-teal-700" />
+                  Live event feed
+                </CardTitle>
+                <CardDescription>
+                  Recent synthetic events scored during the current visitor session.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {liveEvents.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-sm leading-7 text-slate-500">
+                    Start the live demo to stream synthetic customer events into the dashboard.
+                  </div>
+                ) : (
+                  liveEvents.map((event) => (
+                    <div
+                      key={`${event.session_id}-${event.sequence}`}
+                      className="rounded-3xl border border-slate-200/80 bg-white/90 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-slate-950">
+                            {event.customer.customerID}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {event.customer.Contract} | {event.customer.InternetService}
+                          </p>
+                        </div>
+                        <Badge
+                          className={cn(
+                            "rounded-full border-none px-3 py-1",
+                            event.prediction === "Yes"
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          )}
+                        >
+                          {percent(event.probability)}
+                        </Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        {event.risk_notes[0]}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <ArchitectureCard
+              title="Full local data platform"
+              icon={Container}
+              tone="dark"
+              points={[
+                "Original project flow: Kafka producer -> Spark Structured Streaming -> churn scoring -> BI dashboard.",
+                "Hadoop/HDFS remains part of the documented training-data story for the full local architecture.",
+                "The hosted app focuses on a truthful, fast public demo while preserving the broader big-data narrative.",
+              ]}
+            />
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.4fr,1fr]">
+          <Card className="panel">
+            <CardHeader className="space-y-4">
+              <CardTitle className="flex items-center gap-2 font-heading text-2xl">
+                <BrainCircuit className="h-5 w-5 text-teal-700" />
+                Predictor workbench
+              </CardTitle>
+              <CardDescription>
+                Adjust a customer profile and score it with the same Random Forest pipeline used by the dashboard.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-5 md:grid-cols-2">
+                {predictorSelectFields.map((field) => {
+                  const options = Array.isArray(metadata?.predictor_options[field.name])
+                    ? (metadata?.predictor_options[field.name] as string[])
+                    : [];
+                  return (
+                    <div key={field.name} className="space-y-2">
+                      <Label>{field.label}</Label>
+                      <Select
+                        value={String(predictorProfile[field.name] ?? "")}
+                        onValueChange={(value) =>
+                          setPredictorProfile((current) => ({
+                            ...current,
+                            [field.name]: value,
+                          }))
+                        }
                       >
-                        <SelectTrigger className="w-[180px] h-9">
-                          <SelectValue placeholder={category} />
+                        <SelectTrigger className="h-11 rounded-2xl border-slate-300 bg-white">
+                          <SelectValue placeholder={`Select ${field.label}`} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All {category}s</SelectItem>
-                          {items.map((item) => (
-                            <SelectItem key={item.id} value={item.label}>{item.label}</SelectItem>
+                          {options.map((option) => (
+                            <SelectItem key={`${field.name}-${option}`} value={option}>
+                              {option}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  ))}
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="ml-auto"
-                    onClick={() => { setFilters({}); loadData(); }}
-                  >
-                    <RefreshCw className="h-3 w-3 mr-2" />
-                    Reset
-                  </Button>
-                </div>
+                  );
+                })}
 
-                {/* Charts Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card className="lg:col-span-1 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-heading flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-primary" />
-                        Risk Distribution
-                      </CardTitle>
-                      <CardDescription>Histogram of predicted churn probabilities across selected segments.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[350px]">
-                      {loading ? (
-                        <Skeleton className="w-full h-full" />
-                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={distribution}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                            <XAxis 
-                              dataKey="bin" 
-                              tick={{ fontSize: 12 }} 
-                              stroke="hsl(var(--muted-foreground))"
-                            />
-                            <YAxis 
-                              tick={{ fontSize: 12 }} 
-                              stroke="hsl(var(--muted-foreground))"
-                            />
-                            <Tooltip 
-                              cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
-                              contentStyle={{ 
-                                backgroundColor: 'hsl(var(--background))', 
-                                borderColor: 'hsl(var(--border))',
-                                borderRadius: 'var(--radius)'
-                              }}
-                            />
-                            <Bar 
-                              dataKey="count" 
-                              fill="hsl(var(--primary))" 
-                              radius={[4, 4, 0, 0]}
-                              barSize={40}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card className="lg:col-span-1 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-heading flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-primary" />
-                        Key Drivers (Feature Importance)
-                      </CardTitle>
-                      <CardDescription>Factors with the highest statistical impact on customer churn risk.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[350px]">
-                      {loading ? (
-                        <Skeleton className="w-full h-full" />
-                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart 
-                            data={featureImportance} 
-                            layout="vertical"
-                            margin={{ left: 40, right: 20 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                            <XAxis 
-                              type="number"
-                              tick={{ fontSize: 12 }} 
-                              stroke="hsl(var(--muted-foreground))"
-                            />
-                            <YAxis 
-                              dataKey="feature" 
-                              type="category"
-                              tick={{ fontSize: 11 }} 
-                              width={100}
-                              stroke="hsl(var(--muted-foreground))"
-                            />
-                            <Tooltip 
-                              cursor={{ fill: 'hsl(var(--primary)/0.05)' }}
-                              contentStyle={{ 
-                                backgroundColor: 'hsl(var(--background))', 
-                                borderColor: 'hsl(var(--border))',
-                                borderRadius: 'var(--radius)'
-                              }}
-                            />
-                            <Bar 
-                              dataKey="importance" 
-                              fill="hsl(var(--primary))" 
-                              radius={[0, 4, 4, 0]}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </>
-            )}
-
-            {activeTab === 'customers' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-3xl font-heading font-bold tracking-tight">Customer Risk Registry</h2>
-                    <p className="text-muted-foreground mt-1">Deep-dive into high-risk individual profiles and behavioral patterns.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={loadData}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Refresh
-                    </Button>
-                  </div>
-                </div>
-
-                <Card>
-                  <CardHeader className="pb-3 border-b">
-                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                      <div className="relative w-full sm:w-96">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search customer ID..." className="pl-9" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">Showing top 50 risk profiles</span>
-                      </div>
+                {predictorNumberFields.map((field) => {
+                  const bounds = metadata?.predictor_options[field.name];
+                  const numericBounds =
+                    bounds && !Array.isArray(bounds)
+                      ? bounds
+                      : { min: 0, max: 100, step: 1 };
+                  return (
+                    <div key={field.name} className="space-y-2">
+                      <Label>{field.label}</Label>
+                      <Input
+                        type="number"
+                        min={numericBounds.min}
+                        max={numericBounds.max}
+                        step={numericBounds.step}
+                        value={predictorProfile[field.name] ?? ""}
+                        onChange={(event) =>
+                          setPredictorProfile((current) => ({
+                            ...current,
+                            [field.name]:
+                              event.target.value === ""
+                                ? ""
+                                : Number(event.target.value),
+                          }))
+                        }
+                        className="h-11 rounded-2xl border-slate-300 bg-white"
+                      />
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead>Customer ID</TableHead>
-                          <TableHead>Contract</TableHead>
-                          <TableHead>Service</TableHead>
-                          <TableHead>Tenure</TableHead>
-                          <TableHead>Monthly Charge</TableHead>
-                          <TableHead className="text-right">Risk Score</TableHead>
-                          <TableHead className="text-center">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {loading ? (
-                          Array.from({ length: 10 }).map((_, i) => (
-                            <TableRow key={i}>
-                              <TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell>
-                            </TableRow>
-                          ))
-                        ) : customers.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">No customers found matching these filters.</TableCell>
-                          </TableRow>
-                        ) : (
-                          customers.map((c) => (
-                            <TableRow key={c.customerID} className="group hover:bg-muted/30 transition-colors">
-                              <TableCell className="font-medium">{c.customerID}</TableCell>
-                              <TableCell>{c.Contract}</TableCell>
-                              <TableCell>{c.InternetService}</TableCell>
-                              <TableCell>{c.tenure} mo</TableCell>
-                              <TableCell>${c.MonthlyCharges}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
-                                    <div 
-                                      className={cn(
-                                        "h-full rounded-full",
-                                        c.probability > 0.7 ? "bg-rose-500" : c.probability > 0.4 ? "bg-amber-500" : "bg-emerald-500"
-                                      )}
-                                      style={{ width: `${c.probability * 100}%` }}
-                                    />
-                                  </div>
-                                  <span className="font-semibold text-sm">{(c.probability * 100).toFixed(0)}%</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant={c.prediction === 'Yes' ? 'destructive' : 'secondary'} className="rounded-sm px-2 py-0">
-                                  {c.prediction === 'Yes' ? 'High Risk' : 'Retained'}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+                  );
+                })}
               </div>
-            )}
 
-            {activeTab === 'predictor' && (
-              <div className="max-w-5xl mx-auto space-y-8 animate-in zoom-in-95 duration-500">
-                <div className="text-center space-y-2">
-                  <h2 className="text-3xl font-heading font-bold tracking-tight">Real-time Risk Predictor</h2>
-                  <p className="text-muted-foreground max-w-2xl mx-auto">
-                    Input a customer's profile details to generate an instant churn probability score using our trained neural network.
-                  </p>
-                </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={handlePredict}
+                  disabled={!metadata || predicting}
+                  className="rounded-full bg-slate-950 px-6 text-white hover:bg-slate-800"
+                >
+                  <BrainCircuit className="mr-2 h-4 w-4" />
+                  {predicting ? "Scoring profile..." : "Generate prediction"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (metadata) {
+                      setPredictorProfile(metadata.default_profile);
+                      setPrediction(null);
+                    }
+                  }}
+                  className="rounded-full border-slate-300 bg-white/80 px-6"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Reset profile
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Form */}
-                  <Card className="lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Customer Attributes</CardTitle>
-                      <CardDescription>Provide current subscription and behavioral data.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label>Contract Type</Label>
-                          <Select 
-                            value={predictorData.Contract} 
-                            onValueChange={(val) => setPredictorData({...predictorData, Contract: val})}
-                          >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Month-to-month">Month-to-month</SelectItem>
-                              <SelectItem value="One year">One year</SelectItem>
-                              <SelectItem value="Two year">Two year</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Internet Service</Label>
-                          <Select 
-                            value={predictorData.InternetService} 
-                            onValueChange={(val) => setPredictorData({...predictorData, InternetService: val})}
-                          >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="DSL">DSL</SelectItem>
-                              <SelectItem value="Fiber optic">Fiber optic</SelectItem>
-                              <SelectItem value="No">No Internet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Tenure (Months)</Label>
-                          <Input 
-                            type="number" 
-                            value={predictorData.tenure} 
-                            onChange={(e) => setPredictorData({...predictorData, tenure: parseInt(e.target.value)})}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Monthly Charges ($)</Label>
-                          <Input 
-                            type="number" 
-                            value={predictorData.MonthlyCharges} 
-                            onChange={(e) => setPredictorData({...predictorData, MonthlyCharges: parseFloat(e.target.value)})}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Tech Support</Label>
-                          <Select 
-                            value={predictorData.TechSupport} 
-                            onValueChange={(val) => setPredictorData({...predictorData, TechSupport: val})}
-                          >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Yes">Yes</SelectItem>
-                              <SelectItem value="No">No</SelectItem>
-                              <SelectItem value="No internet service">No Internet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Online Security</Label>
-                          <Select 
-                            value={predictorData.OnlineSecurity} 
-                            onValueChange={(val) => setPredictorData({...predictorData, OnlineSecurity: val})}
-                          >
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Yes">Yes</SelectItem>
-                              <SelectItem value="No">No</SelectItem>
-                              <SelectItem value="No internet service">No Internet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="bg-muted/30 border-t mt-6 flex justify-between items-center p-6">
-                      <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Info className="h-4 w-4" />
-                        Model Accuracy: 82.4%
-                      </div>
-                      <Button onClick={handlePredict} disabled={predicting} size="lg" className="min-w-[150px]">
-                        {predicting ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                        Generate Score
-                      </Button>
-                    </CardFooter>
-                  </Card>
-
-                  {/* Result */}
-                  <div className="space-y-6">
-                    <Card className="h-full">
-                      <CardHeader className="p-0 overflow-hidden">
-                         <img 
-                          src="./assets/card-customer-help-1.jpg" 
-                          alt="Customer Analysis" 
-                          className="w-full h-40 object-cover"
-                        />
-                      </CardHeader>
-                      <CardContent className="p-6 text-center space-y-6">
-                        <div className="space-y-2">
-                          <h3 className="font-heading font-bold text-xl">Prediction Outcome</h3>
-                          <p className="text-sm text-muted-foreground">The risk profile is calculated based on historical churn patterns.</p>
-                        </div>
-
-                        {predictionResult ? (
-                          <div className="animate-in zoom-in-50 duration-500 space-y-6">
-                            <div className="relative h-48 w-48 mx-auto">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                  <Pie
-                                    data={[
-                                      { name: 'Risk', value: predictionResult.probability * 100 },
-                                      { name: 'Safe', value: (1 - predictionResult.probability) * 100 }
-                                    ]}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    startAngle={180}
-                                    endAngle={0}
-                                    dataKey="value"
-                                    paddingAngle={5}
-                                  >
-                                    <Cell fill={predictionResult.probability > 0.5 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
-                                    <Cell fill="hsl(var(--muted))" />
-                                  </Pie>
-                                </PieChart>
-                              </ResponsiveContainer>
-                              <div className="absolute inset-0 flex flex-col items-center justify-center pt-12">
-                                <span className="text-4xl font-bold font-heading">{(predictionResult.probability * 100).toFixed(0)}%</span>
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Risk Score</span>
-                              </div>
-                            </div>
-
-                            <div className={cn(
-                              "p-4 rounded-lg border flex flex-col items-center gap-2",
-                              predictionResult.prediction === 'Yes' 
-                                ? "bg-rose-50 border-rose-200 text-rose-800" 
-                                : "bg-emerald-50 border-emerald-200 text-emerald-800"
-                            )}>
-                              {predictionResult.prediction === 'Yes' ? (
-                                <>
-                                  <AlertTriangle className="h-6 w-6" />
-                                  <span className="font-bold">High Churn Potential</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="h-6 w-6" />
-                                  <span className="font-bold">Low Risk Profile</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 text-muted-foreground space-y-3">
-                            <TrendingUp className="h-12 w-12 opacity-20" />
-                            <p className="text-sm">Click 'Generate Score' to see the predicted outcome here.</p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+          <div className="grid gap-6">
+            <Card className="panel">
+              <CardHeader>
+                <CardTitle className="font-heading text-2xl">Prediction result</CardTitle>
+                <CardDescription>
+                  Probability, model classification, and quick interpretation notes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!prediction ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-sm leading-7 text-slate-500">
+                    Submit a profile to see the predicted churn probability and supporting notes.
                   </div>
-                </div>
-              </div>
-            )}
+                ) : (
+                  <>
+                    <div className="rounded-3xl border border-slate-200/80 bg-white/90 p-5">
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-500">
+                        Probability
+                      </p>
+                      <p className="mt-3 font-heading text-5xl font-semibold text-slate-950">
+                        {percent(prediction.probability)}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Model classification:{" "}
+                        <span className="font-medium text-slate-900">
+                          {prediction.prediction === "Yes" ? "High risk" : "Stable"}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {prediction.risk_notes.map((note) => (
+                        <div
+                          key={note}
+                          className="rounded-3xl border border-slate-200/80 bg-white/90 p-4 text-sm leading-6 text-slate-600"
+                        >
+                          {note}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-            {/* Tech Stack Footer */}
-            <section className="pt-12 pb-8 text-center space-y-6 border-t">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-[0.2em]">Enterprise Data Infrastructure</h4>
-              <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                <div className="flex items-center gap-2">
-                  <SiApachespark className="h-8 w-8" />
-                  <span className="text-lg font-bold font-heading">Spark</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <SiApachehadoop className="h-8 w-8" />
-                  <span className="text-lg font-bold font-heading">Hadoop</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <SiScikitlearn className="h-8 w-8" />
-                  <span className="text-lg font-bold font-heading">Scikit-Learn</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <SiMysql className="h-8 w-8" />
-                  <span className="text-lg font-bold font-heading">MySQL</span>
-                </div>
-              </div>
-            </section>
+            <ArchitectureCard
+              title="Deployment + engineering story"
+              icon={Workflow}
+              tone="light"
+              points={[
+                "Public deployment: Vercel frontend + containerized API service with hard limits around live usage.",
+                "Model: Random Forest pipeline trained offline from repo-local telecom churn data and shipped as a saved artifact.",
+                "Docker remains central to the project story for local validation, packaging, and infrastructure narrative.",
+              ]}
+            />
           </div>
-        </ScrollArea>
-      </main>
+        </section>
+
+        <footer className="grid gap-4 md:grid-cols-3">
+          <Card className="panel">
+            <CardContent className="flex h-full items-start gap-4 p-5">
+              <div className="rounded-2xl bg-slate-950/5 p-3 text-slate-900">
+                <Database className="h-5 w-5" />
+              </div>
+              <div className="space-y-2">
+                <p className="font-medium text-slate-950">Historical seed</p>
+                <p className="text-sm leading-6 text-slate-600">
+                  {metadata?.historical_rows?.toLocaleString() ?? "0"} telecom records loaded from the
+                  repo and scored on backend startup.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="panel">
+            <CardContent className="flex h-full items-start gap-4 p-5">
+              <div className="rounded-2xl bg-slate-950/5 p-3 text-slate-900">
+                <Filter className="h-5 w-5" />
+              </div>
+              <div className="space-y-2">
+                <p className="font-medium text-slate-950">Segment analytics</p>
+                <p className="text-sm leading-6 text-slate-600">
+                  Contract, internet service, and payment method filters drive every overview and table query.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="panel">
+            <CardContent className="flex h-full items-start gap-4 p-5">
+              <div className="rounded-2xl bg-slate-950/5 p-3 text-slate-900">
+                <Container className="h-5 w-5" />
+              </div>
+              <div className="space-y-2">
+                <p className="font-medium text-slate-950">Container-ready</p>
+                <p className="text-sm leading-6 text-slate-600">
+                  The standalone app is packaged for Docker and documented for a Vercel plus Cloud Run deployment path.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </footer>
+      </div>
     </div>
   );
 }

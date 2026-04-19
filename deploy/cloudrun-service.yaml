@@ -1,0 +1,31 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: churn-platform-api
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      containerConcurrency: 10
+      timeoutSeconds: 120
+      containers:
+        - image: IMAGE_URI
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ALLOWED_ORIGINS
+              value: "https://your-project.vercel.app"
+            - name: DEMO_MAX_CONCURRENT_SESSIONS
+              value: "1"
+            - name: DEMO_MAX_EVENTS
+              value: "12"
+            - name: DEMO_COOLDOWN_SECONDS
+              value: "45"
+            - name: DEMO_DURATION_SECONDS
+              value: "45"
+            - name: DEMO_EVENT_INTERVAL_SECONDS
+              value: "1.1"
