@@ -274,3 +274,173 @@ p {
     font-size: 1.5rem;
   }
 }
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Transition utilities */
+.transition-all-premium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-smooth {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :root {
+    --spacing-xl: 1.25rem;
+    --spacing-2xl: 1.5rem;
+  }
+
+  .premium-card {
+    padding: var(--spacing-lg);
+  }
+
+  /* Mobile-optimized components */
+  .stat-card {
+    flex-direction: column;
+  }
+
+  /* Touch-friendly button sizes */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improved readability on mobile */
+  body {
+    font-size: 16px; /* Prevents zoom on input focus */
+  }
+
+  /* Responsive grid adjustments */
+  .grid {
+    gap: 1rem;
+  }
+
+  /* Hide long text on mobile */
+  .hide-on-mobile {
+    display: none;
+  }
+
+  /* Improve scrolling performance */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.125rem;
+  }
+
+  /* Stack charts on small screens */
+  .chart-container {
+    height: auto !important;
+    min-height: 300px;
+  }
+
+  /* Improve touch targets */
+  .stat-card {
+    padding: 1rem;
+  }
+
+  /* Readable tables on mobile */
+  table {
+    font-size: 0.875rem;
+  }
+
+  /* Better header spacing */
+  header {
+    padding: 0.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop optimizations */
+  .premium-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+  }
+}
