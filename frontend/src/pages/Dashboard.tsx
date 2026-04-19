@@ -28,7 +28,6 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 
 const Dashboard: React.FC = () => {
-  console.log("[v0] Dashboard component rendering");
   const [dashboardData, setDashboardData] = useState<any>(null);
 
   useEffect(() => {

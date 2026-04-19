@@ -6,10 +6,9 @@ import Customers from './pages/Customers';
 import Analytics from './pages/Analytics';
 import Predictor from './pages/Predictor';
 import Settings from './pages/Settings';
-import './styles/premium.css';
+import Admin from './pages/Admin';
 
 function App() {
-  console.log("[v0] App component rendering");
   return (
     <Router>
       <Routes>
@@ -50,6 +49,14 @@ function App() {
           element={
             <Layout>
               <Settings />
+            </Layout>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Layout>
+              <Admin />
             </Layout>
           }
         />

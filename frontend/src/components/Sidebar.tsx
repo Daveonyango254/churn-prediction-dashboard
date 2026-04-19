@@ -10,6 +10,7 @@ import {
   X,
   Home,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { label: 'Customers', icon: Users, path: '/customers', id: 'customers' },
     { label: 'Analytics', icon: TrendingUp, path: '/analytics', id: 'analytics' },
     { label: 'Predictor', icon: Zap, path: '/predictor', id: 'predictor' },
+    { label: 'Admin', icon: Shield, path: '/admin', id: 'admin' },
     { label: 'Settings', icon: Settings, path: '/settings', id: 'settings' },
   ];
 

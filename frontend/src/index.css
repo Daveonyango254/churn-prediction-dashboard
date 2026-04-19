@@ -62,6 +62,31 @@
   .panel-dark {
     @apply rounded-xl border border-border bg-secondary shadow-lg;
   }
+
+  /* Premium input styling */
+  .premium-input {
+    @apply w-full px-4 py-3 rounded-lg bg-secondary text-foreground border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-muted-foreground;
+  }
+
+  /* Semantic color utilities for backward compatibility */
+  .bg-primary-bg { @apply bg-background; }
+  .bg-secondary-bg { @apply bg-card; }
+  .bg-tertiary-bg { @apply bg-secondary; }
+  .bg-hover-bg { @apply bg-muted; }
+  .bg-accent-primary { @apply bg-primary; }
+  .text-primary { @apply text-foreground; }
+  .text-text-primary { @apply text-foreground; }
+  .text-text-secondary { @apply text-muted-foreground; }
+  .text-accent-primary { @apply text-primary; }
+  .border-border-color { @apply border-border; }
+  
+  /* Status colors */
+  .text-error { @apply text-destructive; }
+  .bg-error { @apply bg-destructive; }
+  .text-success { color: hsl(160 84% 39%); }
+  .bg-success { background-color: hsl(160 84% 39%); }
+  .text-warning { color: hsl(38 92% 50%); }
+  .bg-warning { background-color: hsl(38 92% 50%); }
 }
 
 .font-heading {
@@ -84,4 +109,47 @@
   100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground;
+}
+
+/* Responsive chart containers */
+.recharts-wrapper {
+  font-size: 12px !important;
+}
+
+@media (max-width: 640px) {
+  .recharts-wrapper {
+    font-size: 10px !important;
+  }
+  
+  .recharts-legend-wrapper {
+    font-size: 10px !important;
+  }
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }
