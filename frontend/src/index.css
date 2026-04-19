@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,28 +6,38 @@
 
 @layer base {
   :root {
-    --background: 205 33% 97%;
-    --foreground: 219 30% 16%;
-    --card: 0 0% 100%;
-    --card-foreground: 219 30% 16%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 219 30% 16%;
-    --primary: 177 78% 28%;
+    /* Dark Theme Colors - Premium Dashboard */
+    --background: 215 28% 8%;
+    --foreground: 0 0% 96%;
+    --card: 215 26% 11%;
+    --card-foreground: 0 0% 96%;
+    --popover: 215 26% 11%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 94%;
-    --secondary-foreground: 219 30% 16%;
-    --muted: 210 25% 94%;
-    --muted-foreground: 215 14% 42%;
-    --accent: 24 96% 58%;
+    --secondary: 217 19% 17%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 217 19% 17%;
+    --muted-foreground: 215 14% 64%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 74% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 28% 86%;
-    --input: 210 28% 86%;
-    --ring: 177 78% 28%;
-    --radius: 1.25rem;
+    --border: 217 19% 22%;
+    --input: 217 19% 22%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    
+    /* Chart colors */
+    --chart-1: 217 91% 60%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 74% 58%;
+    --chart-5: 262 83% 58%;
+    
+    /* Font families */
     --font-heading: "Space Grotesk", sans-serif;
-    --font-body: "IBM Plex Sans", sans-serif;
+    --font-body: "Inter", sans-serif;
   }
 
   * {
@@ -41,32 +51,16 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
-    background-image:
-      radial-gradient(circle at top left, rgba(16, 185, 129, 0.10), transparent 32%),
-      radial-gradient(circle at top right, rgba(249, 115, 22, 0.10), transparent 26%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 248, 250, 0.94));
   }
 }
 
 @layer components {
   .panel {
-    @apply rounded-[28px] border border-white/60 bg-white/80 shadow-[0_24px_70px_-32px_rgba(15,23,42,0.28)] backdrop-blur;
+    @apply rounded-xl border border-border bg-card shadow-lg;
   }
 
   .panel-dark {
-    background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 28%),
-      linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
-    @apply rounded-[28px] border border-slate-800/70 shadow-[0_24px_70px_-32px_rgba(15,23,42,0.5)];
-  }
-
-  .hero-card {
-    background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.28), transparent 26%),
-      radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.16), transparent 28%),
-      linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.94));
-    box-shadow: 0 35px 90px -42px rgba(15, 23, 42, 0.72);
-    @apply rounded-[32px];
+    @apply rounded-xl border border-border bg-secondary shadow-lg;
   }
 }
 

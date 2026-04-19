@@ -28,6 +28,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 
 const Dashboard: React.FC = () => {
+  console.log("[v0] Dashboard component rendering");
   const [dashboardData, setDashboardData] = useState<any>(null);
 
   useEffect(() => {
@@ -70,11 +71,11 @@ const Dashboard: React.FC = () => {
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
-    <div className="p-6 lg:p-8 bg-primary-bg min-h-screen">
+    <div className="p-6 lg:p-8 bg-background min-h-screen">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary mt-2">Welcome back! Here&apos;s your churn analytics overview.</p>
+        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Welcome back! Here&apos;s your churn analytics overview.</p>
       </div>
 
       {/* KPI Stats */}
@@ -220,10 +221,10 @@ const Dashboard: React.FC = () => {
         <Card title="Top Churn Reasons" subtitle="Most common reasons for churn">
           <div className="space-y-4">
             {dashboardData.topReasons.map((reason: any, index: number) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-tertiary-bg rounded-lg hover:bg-hover-bg transition-colors">
+              <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary">{reason.reason}</p>
-                  <div className="mt-2 h-2 bg-secondary-bg rounded-full overflow-hidden">
+                  <p className="text-sm font-medium text-foreground">{reason.reason}</p>
+                  <div className="mt-2 h-2 bg-background rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -233,7 +234,7 @@ const Dashboard: React.FC = () => {
                     />
                   </div>
                 </div>
-                <span className="ml-4 text-sm font-semibold text-text-secondary w-12 text-right">
+                <span className="ml-4 text-sm font-semibold text-muted-foreground w-12 text-right">
                   {reason.percentage}%
                 </span>
               </div>

@@ -42,27 +42,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-secondary-bg border-r border-border-color transition-transform duration-300 z-50 lg:translate-x-0 flex flex-col ${
+        className={`fixed left-0 top-0 h-screen w-64 bg-card border-r border-border transition-transform duration-300 z-50 lg:translate-x-0 flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-border-color">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent-primary flex items-center justify-center">
-                <BarChart3 size={24} className="text-white" />
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <BarChart3 size={24} className="text-primary-foreground" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-text-primary">Churn Pro</h2>
-                <p className="text-xs text-text-secondary">Analytics</p>
+                <h2 className="text-lg font-bold text-foreground">Churn Pro</h2>
+                <p className="text-xs text-muted-foreground">Analytics</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="lg:hidden p-1 hover:bg-hover-bg rounded-md transition-colors"
+              className="lg:hidden p-1 hover:bg-muted rounded-md transition-colors"
             >
-              <X size={20} className="text-text-secondary" />
+              <X size={20} className="text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -79,13 +79,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                   active
-                    ? 'bg-accent-primary text-white shadow-lg'
-                    : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary'
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 <Icon
                   size={20}
-                  className={active ? 'text-white' : 'text-text-secondary group-hover:text-accent-primary'}
+                  className={active ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'}
                 />
                 <span className="font-medium">{item.label}</span>
                 {active && <ChevronRight size={16} className="ml-auto" />}
@@ -95,10 +95,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border-color">
-          <div className="bg-tertiary-bg rounded-lg p-3 text-center">
-            <p className="text-xs text-text-secondary">Premium Plan</p>
-            <p className="text-sm font-semibold text-accent-primary mt-1">Active</p>
+        <div className="p-4 border-t border-border">
+          <div className="bg-muted rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">Premium Plan</p>
+            <p className="text-sm font-semibold text-primary mt-1">Active</p>
           </div>
         </div>
       </aside>

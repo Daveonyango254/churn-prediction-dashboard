@@ -33,25 +33,16 @@
   --radius-xl: 1.25rem;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Note: Using Tailwind's preflight for base resets */
 
 html, body, #root {
   height: 100%;
   width: 100%;
-  font-family: var(--font-sans);
-  background-color: var(--primary-bg);
-  color: var(--text-primary);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  overflow: hidden;
+#root {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Scrollbar Styling */

@@ -9,6 +9,7 @@ import Settings from './pages/Settings';
 import './styles/premium.css';
 
 function App() {
+  console.log("[v0] App component rendering");
   return (
     <Router>
       <Routes>

@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://localhost:8000",
+      "/api": {
+        target: "https://churn-platform-api-247833790903.us-central1.run.app",
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
 });
