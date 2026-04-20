@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,28 +6,39 @@
 
 @layer base {
   :root {
-    --background: 205 33% 97%;
-    --foreground: 219 30% 16%;
+    /* Professional Corporate Light Theme */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 219 30% 16%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 219 30% 16%;
-    --primary: 177 78% 28%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 30% 94%;
-    --secondary-foreground: 219 30% 16%;
-    --muted: 210 25% 94%;
-    --muted-foreground: 215 14% 42%;
-    --accent: 24 96% 58%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 74% 58%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 20% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 28% 86%;
-    --input: 210 28% 86%;
-    --ring: 177 78% 28%;
-    --radius: 1.25rem;
-    --font-heading: "Space Grotesk", sans-serif;
-    --font-body: "IBM Plex Sans", sans-serif;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+    
+    /* Chart colors - professional blue palette */
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 71% 45%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 262 83% 58%;
+    
+    /* Status colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
   }
 
   * {
@@ -40,54 +51,95 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-body);
-    background-image:
-      radial-gradient(circle at top left, rgba(16, 185, 129, 0.10), transparent 32%),
-      radial-gradient(circle at top right, rgba(249, 115, 22, 0.10), transparent 26%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 248, 250, 0.94));
+    font-family: "Inter", sans-serif;
   }
 }
 
 @layer components {
-  .panel {
-    @apply rounded-[28px] border border-white/60 bg-white/80 shadow-[0_24px_70px_-32px_rgba(15,23,42,0.28)] backdrop-blur;
+  .card {
+    @apply rounded-lg border border-border bg-card shadow-sm;
   }
 
-  .panel-dark {
-    background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 28%),
-      linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.92));
-    @apply rounded-[28px] border border-slate-800/70 shadow-[0_24px_70px_-32px_rgba(15,23,42,0.5)];
+  .input {
+    @apply w-full px-3 py-2 rounded-md bg-background text-foreground border border-border 
+           focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none 
+           transition-all placeholder:text-muted-foreground text-sm;
   }
 
-  .hero-card {
-    background:
-      radial-gradient(circle at top left, rgba(45, 212, 191, 0.28), transparent 26%),
-      radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.16), transparent 28%),
-      linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.94));
-    box-shadow: 0 35px 90px -42px rgba(15, 23, 42, 0.72);
-    @apply rounded-[32px];
+  .select {
+    @apply w-full px-3 py-2 rounded-md bg-background text-foreground border border-border 
+           focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none 
+           transition-all text-sm cursor-pointer;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium 
+           text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary;
+  }
+
+  .btn-outline {
+    @apply btn border border-border bg-transparent hover:bg-secondary focus:ring-primary;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-secondary focus:ring-primary;
+  }
+
+  .btn-destructive {
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive;
   }
 }
 
-.font-heading {
-  font-family: var(--font-heading);
-}
-
+/* Live indicator */
 .live-dot {
-  background-color: rgb(16 185 129);
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
-  animation: live-pulse 1.6s infinite;
+  @apply w-2 h-2 rounded-full;
+  background-color: hsl(var(--success));
+  box-shadow: 0 0 0 0 hsla(var(--success), 0.6);
+  animation: live-pulse 1.5s infinite;
 }
 
 @keyframes live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  0% { box-shadow: 0 0 0 0 hsla(142, 71%, 45%, 0.5); }
+  70% { box-shadow: 0 0 0 8px hsla(142, 71%, 45%, 0); }
+  100% { box-shadow: 0 0 0 0 hsla(142, 71%, 45%, 0); }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full hover:bg-muted-foreground;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .recharts-wrapper {
+    font-size: 10px !important;
   }
 }
