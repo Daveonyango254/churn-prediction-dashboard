@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,38 +6,39 @@
 
 @layer base {
   :root {
-    /* Dark Theme Colors - Premium Dashboard */
-    --background: 215 28% 8%;
-    --foreground: 0 0% 96%;
-    --card: 215 26% 11%;
-    --card-foreground: 0 0% 96%;
-    --popover: 215 26% 11%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 217 91% 60%;
+    /* Professional Corporate Light Theme */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 19% 17%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 217 19% 17%;
-    --muted-foreground: 215 14% 64%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 74% 58%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 20% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 217 19% 22%;
-    --input: 217 19% 22%;
-    --ring: 217 91% 60%;
-    --radius: 0.75rem;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
     
-    /* Chart colors */
-    --chart-1: 217 91% 60%;
-    --chart-2: 160 84% 39%;
+    /* Chart colors - professional blue palette */
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 71% 45%;
     --chart-3: 38 92% 50%;
-    --chart-4: 0 74% 58%;
+    --chart-4: 0 84% 60%;
     --chart-5: 262 83% 58%;
     
-    /* Font families */
-    --font-heading: "Space Grotesk", sans-serif;
-    --font-body: "Inter", sans-serif;
+    /* Status colors */
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
   }
 
   * {
@@ -50,71 +51,72 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-body);
+    font-family: "Inter", sans-serif;
   }
 }
 
 @layer components {
-  .panel {
-    @apply rounded-xl border border-border bg-card shadow-lg;
+  .card {
+    @apply rounded-lg border border-border bg-card shadow-sm;
   }
 
-  .panel-dark {
-    @apply rounded-xl border border-border bg-secondary shadow-lg;
+  .input {
+    @apply w-full px-3 py-2 rounded-md bg-background text-foreground border border-border 
+           focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none 
+           transition-all placeholder:text-muted-foreground text-sm;
   }
 
-  /* Premium input styling */
-  .premium-input {
-    @apply w-full px-4 py-3 rounded-lg bg-secondary text-foreground border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-muted-foreground;
+  .select {
+    @apply w-full px-3 py-2 rounded-md bg-background text-foreground border border-border 
+           focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none 
+           transition-all text-sm cursor-pointer;
   }
 
-  /* Semantic color utilities for backward compatibility */
-  .bg-primary-bg { @apply bg-background; }
-  .bg-secondary-bg { @apply bg-card; }
-  .bg-tertiary-bg { @apply bg-secondary; }
-  .bg-hover-bg { @apply bg-muted; }
-  .bg-accent-primary { @apply bg-primary; }
-  .text-primary { @apply text-foreground; }
-  .text-text-primary { @apply text-foreground; }
-  .text-text-secondary { @apply text-muted-foreground; }
-  .text-accent-primary { @apply text-primary; }
-  .border-border-color { @apply border-border; }
-  
-  /* Status colors */
-  .text-error { @apply text-destructive; }
-  .bg-error { @apply bg-destructive; }
-  .text-success { color: hsl(160 84% 39%); }
-  .bg-success { background-color: hsl(160 84% 39%); }
-  .text-warning { color: hsl(38 92% 50%); }
-  .bg-warning { background-color: hsl(38 92% 50%); }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium 
+           text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary;
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary;
+  }
+
+  .btn-outline {
+    @apply btn border border-border bg-transparent hover:bg-secondary focus:ring-primary;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-secondary focus:ring-primary;
+  }
+
+  .btn-destructive {
+    @apply btn bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive;
+  }
 }
 
-.font-heading {
-  font-family: var(--font-heading);
-}
-
+/* Live indicator */
 .live-dot {
-  background-color: rgb(16 185 129);
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
-  animation: live-pulse 1.6s infinite;
+  @apply w-2 h-2 rounded-full;
+  background-color: hsl(var(--success));
+  box-shadow: 0 0 0 0 hsla(var(--success), 0.6);
+  animation: live-pulse 1.5s infinite;
 }
 
 @keyframes live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
+  0% { box-shadow: 0 0 0 0 hsla(142, 71%, 45%, 0.5); }
+  70% { box-shadow: 0 0 0 8px hsla(142, 71%, 45%, 0); }
+  100% { box-shadow: 0 0 0 0 hsla(142, 71%, 45%, 0); }
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -122,34 +124,22 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground;
-}
-
-/* Responsive chart containers */
-.recharts-wrapper {
-  font-size: 12px !important;
-}
-
-@media (max-width: 640px) {
-  .recharts-wrapper {
-    font-size: 10px !important;
-  }
-  
-  .recharts-legend-wrapper {
-    font-size: 10px !important;
-  }
+  @apply bg-border rounded-full hover:bg-muted-foreground;
 }
 
 /* Animation utilities */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .recharts-wrapper {
+    font-size: 10px !important;
+  }
 }

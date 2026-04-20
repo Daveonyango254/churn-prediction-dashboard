@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Bell, Search, User } from 'lucide-react';
+import { Menu, Github } from 'lucide-react';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -7,45 +7,33 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   return (
-    <header className="bg-card border-b border-border px-4 lg:px-8 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-4 flex-1">
+    <header className="bg-card border-b border-border px-4 lg:px-6 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
         {/* Mobile Menu Button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+          className="lg:hidden p-2 hover:bg-secondary rounded-md transition-colors"
         >
-          <Menu size={24} className="text-foreground" />
+          <Menu size={20} className="text-foreground" />
         </button>
-
-        {/* Search Bar */}
-        <div className="hidden md:flex flex-1 max-w-md items-center bg-muted border border-border rounded-lg px-3 py-2 gap-2">
-          <Search size={18} className="text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search customers, metrics..."
-            className="bg-transparent border-none outline-none flex-1 text-foreground placeholder:text-muted-foreground text-sm"
-          />
+        
+        <div className="hidden lg:block">
+          <h1 className="text-sm font-medium text-foreground">Churn Prediction Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Real-time ML-powered customer analytics</p>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-4">
-        {/* Notifications */}
-        <button className="p-2 hover:bg-muted rounded-lg transition-colors relative">
-          <Bell size={20} className="text-muted-foreground" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-        </button>
-
-        {/* User Menu */}
-        <button className="flex items-center gap-2 px-3 py-2 hover:bg-muted rounded-lg transition-colors">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <User size={16} className="text-primary-foreground" />
-          </div>
-          <div className="hidden md:flex flex-col items-start">
-            <span className="text-sm font-medium text-foreground">Admin</span>
-            <span className="text-xs text-muted-foreground">Premium</span>
-          </div>
-        </button>
+      <div className="flex items-center gap-3">
+        <a
+          href="https://github.com/Daveonyango254/churn-prediction-dashboard"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+        >
+          <Github size={16} />
+          <span className="hidden sm:inline">View Source</span>
+        </a>
       </div>
     </header>
   );

@@ -1,246 +1,412 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import {
-  Users,
-  TrendingDown,
-  AlertCircle,
-  Activity,
-  DollarSign,
+  Play, Square, Users, AlertTriangle, TrendingDown, Activity,
+  Server, Cloud, Database, GitBranch, Zap, Info
 } from 'lucide-react';
-import StatCard from '../components/StatCard';
-import Card from '../components/Card';
-import Button from '../components/Button';
+import {
+  loadOverview, loadFeatureImportance, loadMetadata,
+  startDemoSession, stopDemoSession, openDemoStream,
+  Overview, FeatureImportance, DemoCustomerEvent, DemoSession
+} from '../api';
+
+const RISK_COLORS = {
+  low: '#22c55e',
+  medium: '#eab308', 
+  high: '#ef4444'
+};
 
 const Dashboard: React.FC = () => {
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [features, setFeatures] = useState<FeatureImportance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Live demo state
+  const [session, setSession] = useState<DemoSession | null>(null);
+  const [events, setEvents] = useState<DemoCustomerEvent[]>([]);
+  const [streamStatus, setStreamStatus] = useState<'idle' | 'starting' | 'running' | 'stopping'>('idle');
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Load initial data
   useEffect(() => {
-    // Simulated API call - replace with actual API
-    const mockData = {
-      stats: {
-        totalCustomers: 12547,
-        churnRate: 8.5,
-        atRiskCustomers: 342,
-        retentionRate: 91.5,
-      },
-      timeSeriesData: [
-        { month: 'Jan', churn: 12, retention: 88, customers: 1200 },
-        { month: 'Feb', churn: 14, retention: 86, customers: 1350 },
-        { month: 'Mar', churn: 10, retention: 90, customers: 1520 },
-        { month: 'Apr', churn: 15, retention: 85, customers: 1680 },
-        { month: 'May', churn: 8, retention: 92, customers: 1850 },
-        { month: 'Jun', churn: 9, retention: 91, customers: 2100 },
-      ],
-      churnBySegment: [
-        { segment: 'Enterprise', value: 3.5, customers: 450 },
-        { segment: 'Mid-Market', value: 8.2, customers: 2300 },
-        { segment: 'SMB', value: 12.1, customers: 9797 },
-      ],
-      topReasons: [
-        { reason: 'Better Alternative', count: 45, percentage: 28 },
-        { reason: 'Price Too High', count: 32, percentage: 20 },
-        { reason: 'Poor Support', count: 28, percentage: 17 },
-        { reason: 'Feature Gaps', count: 31, percentage: 19 },
-        { reason: 'Other', count: 25, percentage: 16 },
-      ],
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [overviewData, featuresData] = await Promise.all([
+          loadOverview({}),
+          loadFeatureImportance()
+        ]);
+        setOverview(overviewData);
+        setFeatures(featuresData);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
     };
-    setDashboardData(mockData);
+    loadData();
   }, []);
 
-  if (!dashboardData) {
-    return <div className="p-8">Loading...</div>;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+    };
+  }, []);
+
+  const handleStartDemo = async () => {
+    try {
+      setStreamStatus('starting');
+      setEvents([]);
+      const response = await startDemoSession();
+      setSession(response.session);
+
+      const source = openDemoStream(response.session.id, {
+        onStarted: (payload) => {
+          setSession(payload.session);
+          setStreamStatus('running');
+        },
+        onCustomer: (event) => {
+          setEvents(prev => [event, ...prev].slice(0, 50));
+        },
+        onState: (payload) => {
+          setSession(payload.session);
+        },
+        onFinished: (payload) => {
+          setSession(payload.session);
+          setStreamStatus('idle');
+          eventSourceRef.current?.close();
+        },
+        onError: (msg) => {
+          setError(msg);
+          setStreamStatus('idle');
+        }
+      });
+
+      eventSourceRef.current = source;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start demo');
+      setStreamStatus('idle');
+    }
+  };
+
+  const handleStopDemo = async () => {
+    if (!session) return;
+    try {
+      setStreamStatus('stopping');
+      await stopDemoSession(session.id);
+      eventSourceRef.current?.close();
+      setStreamStatus('idle');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to stop demo');
+      setStreamStatus('idle');
+    }
+  };
+
+  const getRiskLevel = (probability: number) => {
+    if (probability >= 0.7) return { label: 'High', color: RISK_COLORS.high };
+    if (probability >= 0.4) return { label: 'Medium', color: RISK_COLORS.medium };
+    return { label: 'Low', color: RISK_COLORS.low };
+  };
+
+  // Group features by category for cleaner display
+  const groupedFeatures = features.reduce((acc, f) => {
+    const parts = f.feature.split('_');
+    const group = parts[0];
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(f);
+    return acc;
+  }, {} as Record<string, FeatureImportance[]>);
+
+  const aggregatedGroups = Object.entries(groupedFeatures)
+    .map(([group, items]) => ({
+      group: group.charAt(0).toUpperCase() + group.slice(1),
+      importance: items.reduce((sum, i) => sum + i.importance, 0),
+      features: items.length
+    }))
+    .sort((a, b) => b.importance - a.importance)
+    .slice(0, 10);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
   return (
-    <div className="p-6 lg:p-8 bg-background min-h-screen">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Welcome back! Here&apos;s your churn analytics overview.</p>
-      </div>
+    <div className="p-4 lg:p-6 space-y-6">
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
 
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          label="Total Customers"
-          value={dashboardData.stats.totalCustomers.toLocaleString()}
-          change={12}
-          icon={<Users size={20} />}
-          color="blue"
-        />
-        <StatCard
-          label="Churn Rate"
-          value={`${dashboardData.stats.churnRate}%`}
-          change={-3}
-          icon={<TrendingDown size={20} />}
-          color="red"
-        />
-        <StatCard
-          label="At-Risk Customers"
-          value={dashboardData.stats.atRiskCustomers}
-          change={5}
-          icon={<AlertCircle size={20} />}
-          color="orange"
-        />
-        <StatCard
-          label="Retention Rate"
-          value={`${dashboardData.stats.retentionRate}%`}
-          change={3}
-          icon={<Activity size={20} />}
-          color="green"
-        />
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Churn vs Retention Trend */}
-        <div className="lg:col-span-2">
-          <Card title="Trend Analysis" subtitle="Churn vs Retention over time">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dashboardData.timeSeriesData}>
-                  <defs>
-                    <linearGradient id="colorChurn" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" />
-                  <XAxis dataKey="month" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #2d3748',
-                      borderRadius: '8px',
-                    }}
-                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="churn"
-                    stroke="#ef4444"
-                    fillOpacity={1}
-                    fill="url(#colorChurn)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="retention"
-                    stroke="#10b981"
-                    fillOpacity={1}
-                    fill="url(#colorRetention)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+      {/* Project Info Section */}
+      <section className="card p-6">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Info size={20} className="text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Customer Churn Prediction Platform</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Machine Learning-powered analytics for proactive customer retention
+            </p>
+          </div>
         </div>
 
-        {/* Churn by Segment */}
-        <div>
-          <Card title="Churn by Segment" subtitle="Segment performance">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dashboardData.churnBySegment}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ segment, value }) => `${segment} ${value}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {dashboardData.churnBySegment.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1f2937',
-                      border: '1px solid #2d3748',
-                      borderRadius: '8px',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
+        <div className="grid md:grid-cols-2 gap-6 mt-6">
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-2">What This Does</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This platform uses a <strong>Random Forest classifier</strong> trained on historical telecom customer data 
+              to predict which customers are likely to churn. The model analyzes 20+ features including contract type, 
+              tenure, monthly charges, and service usage to generate real-time risk scores.
+            </p>
+          </div>
+          
+          <div>
+            <h3 className="text-sm font-medium text-foreground mb-2">Why It Matters</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Customer acquisition costs 5-25x more than retention. By identifying at-risk customers early, 
+              businesses can deploy targeted interventions—personalized offers, proactive support, or contract 
+              adjustments—to reduce churn and protect revenue.
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Customer Growth */}
-        <Card title="Customer Growth" subtitle="Total customers added monthly">
-          <div className="h-72">
+        {/* Tech Stack */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <h3 className="text-sm font-medium text-foreground mb-3">Deployment & Engineering</h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { icon: Server, label: 'FastAPI Backend' },
+              { icon: Cloud, label: 'Google Cloud Run' },
+              { icon: Database, label: 'Scikit-learn Pipeline' },
+              { icon: GitBranch, label: 'CI/CD via GitHub Actions' },
+              { icon: Zap, label: 'React + Vite Frontend' },
+            ].map(({ icon: Icon, label }) => (
+              <span key={label} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-secondary text-xs text-muted-foreground rounded-md">
+                <Icon size={12} />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* KPI Cards */}
+      {overview && (
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Users size={18} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Customers</p>
+                <p className="text-xl font-semibold text-foreground">{overview.total_customers.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-50 rounded-lg">
+                <Activity size={18} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Avg Risk Score</p>
+                <p className="text-xl font-semibold text-foreground">{(overview.avg_predicted_risk * 100).toFixed(1)}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-50 rounded-lg">
+                <AlertTriangle size={18} className="text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">High Risk</p>
+                <p className="text-xl font-semibold text-foreground">{overview.high_risk_customers.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">({(overview.high_risk_rate * 100).toFixed(1)}%)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                <TrendingDown size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Actual Churn</p>
+                <p className="text-xl font-semibold text-foreground">{overview.actual_churn_customers.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">({(overview.actual_churn_rate * 100).toFixed(1)}%)</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Feature Importance */}
+        <section className="card p-5">
+          <h3 className="text-sm font-medium text-foreground mb-1">Feature Drivers (Random Forest Importance)</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Aggregated importance scores by feature group from the trained model
+          </p>
+          
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dashboardData.timeSeriesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" />
-                <XAxis dataKey="month" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" />
+              <BarChart data={aggregatedGroups} layout="vertical" margin={{ left: 0, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                <YAxis type="category" dataKey="group" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={80} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #2d3748',
-                    borderRadius: '8px',
-                  }}
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '12px' }}
+                  formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, 'Importance']}
                 />
-                <Bar dataKey="customers" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
+                  {aggregatedGroups.map((entry, index) => (
+                    <Cell key={index} fill={index === 0 ? 'hsl(221, 83%, 53%)' : index < 3 ? 'hsl(142, 71%, 45%)' : 'hsl(215, 16%, 47%)'} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </section>
 
-        {/* Top Churn Reasons */}
-        <Card title="Top Churn Reasons" subtitle="Most common reasons for churn">
-          <div className="space-y-4">
-            {dashboardData.topReasons.map((reason: any, index: number) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{reason.reason}</p>
-                  <div className="mt-2 h-2 bg-background rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${reason.percentage}%`,
-                        backgroundColor: COLORS[index % COLORS.length],
-                      }}
-                    />
-                  </div>
-                </div>
-                <span className="ml-4 text-sm font-semibold text-muted-foreground w-12 text-right">
-                  {reason.percentage}%
+        {/* Live Events Feed */}
+        <section className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Live Scoring Demo</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Synthetic events scored in real-time
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {streamStatus === 'running' && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <span className="live-dot" />
+                  Live
                 </span>
-              </div>
-            ))}
+              )}
+              
+              {streamStatus === 'idle' ? (
+                <button
+                  onClick={handleStartDemo}
+                  className="btn-primary text-xs px-3 py-1.5"
+                >
+                  <Play size={14} />
+                  Start Demo
+                </button>
+              ) : streamStatus === 'running' ? (
+                <button
+                  onClick={handleStopDemo}
+                  className="btn-outline text-xs px-3 py-1.5"
+                >
+                  <Square size={14} />
+                  Stop
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {streamStatus === 'starting' ? 'Starting...' : 'Stopping...'}
+                </span>
+              )}
+            </div>
           </div>
-        </Card>
+
+          {/* Session Stats */}
+          {session && streamStatus !== 'idle' && (
+            <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-secondary rounded-lg text-center">
+              <div>
+                <p className="text-lg font-semibold text-foreground">{session.processed_events}</p>
+                <p className="text-xs text-muted-foreground">Scored</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-red-600">{session.high_risk_events}</p>
+                <p className="text-xs text-muted-foreground">High Risk</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-foreground">{(session.avg_probability * 100).toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">Avg Score</p>
+              </div>
+            </div>
+          )}
+
+          {/* Events List */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {events.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                {streamStatus === 'idle' 
+                  ? 'Click "Start Demo" to see live scoring'
+                  : 'Waiting for events...'}
+              </div>
+            ) : (
+              events.map((event, idx) => {
+                const risk = getRiskLevel(event.probability);
+                return (
+                  <div
+                    key={`${event.session_id}-${event.sequence}`}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      idx === 0 ? 'bg-primary/5 border-primary/20' : 'bg-secondary border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: risk.color }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {event.customer.customerID}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {event.customer.Contract} · ${event.customer.MonthlyCharges}/mo
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-3">
+                      <p className="text-sm font-semibold" style={{ color: risk.color }}>
+                        {(event.probability * 100).toFixed(0)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">{risk.label} Risk</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
       </div>
+
+      {/* Detailed Feature List */}
+      <section className="card p-5">
+        <h3 className="text-sm font-medium text-foreground mb-4">All Feature Importance Scores</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {features.slice(0, 20).map((f) => (
+            <div key={f.feature} className="flex items-center justify-between p-2 bg-secondary rounded-md">
+              <span className="text-xs text-muted-foreground truncate mr-2">{f.feature}</span>
+              <span className="text-xs font-medium text-foreground">{(f.importance * 100).toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
