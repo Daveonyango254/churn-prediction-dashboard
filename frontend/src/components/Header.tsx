@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Github } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -25,15 +25,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
       {/* Right Actions */}
       <div className="flex items-center gap-3">
-        <a
-          href="https://github.com/Daveonyango254/churn-prediction-dashboard"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-        >
-          <Github size={16} />
-          <span className="hidden sm:inline">View Source</span>
-        </a>
       </div>
     </header>
   );
