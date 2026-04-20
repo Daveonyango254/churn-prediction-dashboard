@@ -15,12 +15,12 @@ The deployable version in this repo is intentionally narrower:
 
 - it is **standalone**
 - it is **honest to host**
-- it is **cheap enough for a public resume demo**
+- it is **cheap enough for a public demo**
 
-Instead of pretending the full cloud big-data stack is always-on in free hosting, this repo keeps the model, analytics API, dashboard, and live visitor-triggered synthetic stream. That makes the product easy to demonstrate while still preserving the original engineering story.
+Instead of pretending the full cloud big-data stack is always-on in free hosting, this repo keeps the model, analytics API, dashboard, and live visitor-triggered synthetic stream. That makes the product easy to demonstrate while still trying to preserve the original Big data narative from my Local VM.
 
 ## Artifact carried over
 
-The diagram below comes from the upstream project and documents the broader architecture you can discuss alongside the deployed demo:
+The diagram below comes from the upstream project and documents the broader architecture:
 
 ![Original architecture](original-architecture.png)
