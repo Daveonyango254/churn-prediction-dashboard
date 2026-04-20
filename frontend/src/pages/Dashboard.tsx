@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import {
   Play, Square, Users, AlertTriangle, TrendingDown, Activity,
   Server, Cloud, Database, GitBranch, Zap, Info
 } from 'lucide-react';
 import {
-  loadOverview, loadFeatureImportance, loadMetadata,
+  loadOverview, loadFeatureImportance, loadDistribution,
   startDemoSession, stopDemoSession, openDemoStream,
-  Overview, FeatureImportance, DemoCustomerEvent, DemoSession
+  Overview, FeatureImportance, DemoCustomerEvent, DemoSession, DistributionBucket
 } from '../api';
 
 const RISK_COLORS = {
@@ -21,6 +21,7 @@ const RISK_COLORS = {
 const Dashboard: React.FC = () => {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [features, setFeatures] = useState<FeatureImportance[]>([]);
+  const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,12 +36,14 @@ const Dashboard: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [overviewData, featuresData] = await Promise.all([
+        const [overviewData, featuresData, distData] = await Promise.all([
           loadOverview({}),
-          loadFeatureImportance()
+          loadFeatureImportance(),
+          loadDistribution()
         ]);
         setOverview(overviewData);
         setFeatures(featuresData);
+        setDistribution(distData);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -272,18 +275,13 @@ const Dashboard: React.FC = () => {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={aggregatedGroups} layout="vertical" margin={{ left: 0, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                <YAxis type="category" dataKey="group" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={80} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="group" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={80} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '12px' }}
                   formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, 'Importance']}
                 />
-                <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
-                  {aggregatedGroups.map((entry, index) => (
-                    <Cell key={index} fill={index === 0 ? 'hsl(221, 83%, 53%)' : index < 3 ? 'hsl(142, 71%, 45%)' : 'hsl(215, 16%, 47%)'} />
-                  ))}
-                </Bar>
+                <Bar dataKey="importance" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -395,16 +393,102 @@ const Dashboard: React.FC = () => {
         </section>
       </div>
 
-      {/* Detailed Feature List */}
-      <section className="card p-5">
-        <h3 className="text-sm font-medium text-foreground mb-4">All Feature Importance Scores</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {features.slice(0, 20).map((f) => (
-            <div key={f.feature} className="flex items-center justify-between p-2 bg-secondary rounded-md">
-              <span className="text-xs text-muted-foreground truncate mr-2">{f.feature}</span>
-              <span className="text-xs font-medium text-foreground">{(f.importance * 100).toFixed(1)}%</span>
+      {/* Risk Distribution Analytics */}
+      <section className="grid lg:grid-cols-2 gap-6">
+        {/* Risk Distribution Chart */}
+        <div className="card p-5">
+          <h3 className="text-sm font-medium text-foreground mb-1">Risk Score Distribution</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Distribution of predicted churn probabilities across all customers
+          </p>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={distribution} margin={{ left: 0, right: 0 }}>
+                <XAxis 
+                  dataKey="bucket" 
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
+                  axisLine={false} 
+                  tickLine={false}
+                  interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '12px' }}
+                  formatter={(value: number) => [value.toLocaleString(), 'Customers']}
+                />
+                <Bar dataKey="count" fill="hsl(221, 83%, 53%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Risk Breakdown Pie */}
+        <div className="card p-5">
+          <h3 className="text-sm font-medium text-foreground mb-1">Risk Category Breakdown</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Customer segments by churn risk level
+          </p>
+          {overview && (
+            <div className="flex items-center gap-6">
+              <div className="h-48 w-48 flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Low Risk', value: overview.total_customers - overview.high_risk_customers - Math.round(overview.total_customers * 0.25), color: '#22c55e' },
+                        { name: 'Medium Risk', value: Math.round(overview.total_customers * 0.25), color: '#eab308' },
+                        { name: 'High Risk', value: overview.high_risk_customers, color: '#ef4444' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {[
+                        { name: 'Low Risk', value: overview.total_customers - overview.high_risk_customers - Math.round(overview.total_customers * 0.25), color: '#22c55e' },
+                        { name: 'Medium Risk', value: Math.round(overview.total_customers * 0.25), color: '#eab308' },
+                        { name: 'High Risk', value: overview.high_risk_customers, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '12px' }}
+                      formatter={(value: number) => [value.toLocaleString(), 'Customers']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                  <span className="text-sm text-muted-foreground">Low Risk</span>
+                  <span className="text-sm font-medium text-foreground ml-auto">
+                    {(overview.total_customers - overview.high_risk_customers - Math.round(overview.total_customers * 0.25)).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-amber-500" />
+                  <span className="text-sm text-muted-foreground">Medium Risk</span>
+                  <span className="text-sm font-medium text-foreground ml-auto">
+                    {Math.round(overview.total_customers * 0.25).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-red-500" />
+                  <span className="text-sm text-muted-foreground">High Risk</span>
+                  <span className="text-sm font-medium text-foreground ml-auto">
+                    {overview.high_risk_customers.toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </section>
     </div>

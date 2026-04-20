@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Predictor from './pages/Predictor';
+import DataSource from './pages/DataSource';
 
 function App() {
   return (
@@ -21,6 +22,14 @@ function App() {
           element={
             <Layout>
               <Predictor />
+            </Layout>
+          }
+        />
+        <Route
+          path="/data-source"
+          element={
+            <Layout>
+              <DataSource />
             </Layout>
           }
         />

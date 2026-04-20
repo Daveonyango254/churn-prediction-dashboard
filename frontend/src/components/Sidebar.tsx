@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Sliders, X, Activity } from 'lucide-react';
+import { BarChart3, Sliders, X, Activity, Database, ExternalLink } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', icon: BarChart3, path: '/', id: 'dashboard' },
     { label: 'Predictor Workbench', icon: Sliders, path: '/predictor', id: 'predictor' },
+    { label: 'Data Source', icon: Database, path: '/data-source', id: 'data-source' },
   ];
 
   return (
@@ -80,10 +81,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Footer */}
         <div className="p-4 border-t border-border">
-          <div className="bg-secondary rounded-md p-3 text-center">
-            <p className="text-xs text-muted-foreground">Random Forest Model</p>
-            <p className="text-sm font-medium text-foreground mt-0.5">Production Ready</p>
-          </div>
+          <a 
+            href="https://david-portfolio.xyz/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 bg-secondary hover:bg-secondary/80 rounded-md p-3 transition-colors"
+          >
+            <ExternalLink size={14} className="text-primary" />
+            <span className="text-sm font-medium text-foreground">View Portfolio</span>
+          </a>
         </div>
       </aside>
     </>
