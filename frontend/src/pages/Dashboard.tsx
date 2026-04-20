@@ -14,7 +14,7 @@ import {
 
 const RISK_COLORS = {
   low: '#22c55e',
-  medium: '#eab308', 
+  medium: '#eab308',
   high: '#ef4444'
 };
 
@@ -172,18 +172,18 @@ const Dashboard: React.FC = () => {
           <div>
             <h3 className="text-sm font-medium text-foreground mb-2">What This Does</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              This platform uses a <strong>Random Forest classifier</strong> trained on historical telecom customer data 
-              to predict which customers are likely to churn. The model analyzes 20+ features including contract type, 
+              This platform uses a <strong>Random Forest classifier</strong> trained on historical telecom customer data
+              to predict which customers are likely to churn. The model analyzes 20+ features including contract type,
               tenure, monthly charges, and service usage to generate real-time risk scores.
             </p>
           </div>
-          
+
           <div>
             <h3 className="text-sm font-medium text-foreground mb-2">Why It Matters</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Customer acquisition costs 5-25x more than retention. By identifying at-risk customers early, 
-              businesses can deploy targeted interventions—personalized offers, proactive support, or contract 
-              adjustments—to reduce churn and protect revenue.
+              Customer acquisition costs 5-25x more than retention. By identifying at-risk customers early,
+              businesses can deploy targeted interventions like personalized offers, proactive support, or contract
+              adjustments to reduce churn and protect revenue.
             </p>
           </div>
         </div>
@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
           <p className="text-xs text-muted-foreground mb-4">
             Aggregated importance scores by feature group from the trained model
           </p>
-          
+
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={aggregatedGroups} layout="vertical" margin={{ left: 0, right: 16 }}>
@@ -296,7 +296,7 @@ const Dashboard: React.FC = () => {
                 Synthetic events scored in real-time
               </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {streamStatus === 'running' && (
                 <span className="flex items-center gap-1.5 text-xs text-emerald-600">
@@ -304,7 +304,7 @@ const Dashboard: React.FC = () => {
                   Live
                 </span>
               )}
-              
+
               {streamStatus === 'idle' ? (
                 <button
                   onClick={handleStartDemo}
@@ -351,7 +351,7 @@ const Dashboard: React.FC = () => {
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {events.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                {streamStatus === 'idle' 
+                {streamStatus === 'idle'
                   ? 'Click "Start Demo" to see live scoring'
                   : 'Waiting for events...'}
               </div>
@@ -361,9 +361,8 @@ const Dashboard: React.FC = () => {
                 return (
                   <div
                     key={`${event.session_id}-${event.sequence}`}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
-                      idx === 0 ? 'bg-primary/5 border-primary/20' : 'bg-secondary border-transparent'
-                    }`}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${idx === 0 ? 'bg-primary/5 border-primary/20' : 'bg-secondary border-transparent'
+                      }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
@@ -404,10 +403,10 @@ const Dashboard: React.FC = () => {
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={distribution} margin={{ left: 0, right: 0 }}>
-                <XAxis 
-                  dataKey="bucket" 
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} 
-                  axisLine={false} 
+                <XAxis
+                  dataKey="bucket"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
                   tickLine={false}
                   interval={0}
                   angle={-45}
